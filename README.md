@@ -1,14 +1,14 @@
 # KrakenPlot
 
-**A command-line tool for creating beautiful, publication-ready visualizations of Kraken2 taxonomic classification output.**
+**A command-line tool for creating visualizations of Kraken2 taxonomic classification output.**
 
 ![Version](https://img.shields.io/badge/version-0.1.0-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Overview
 
-KrakenPlot takes the output from [Kraken2](https://ccb.jhu.edu/software/kraken2/) (a metagenomic sequence classifier) and transforms it into intuitive, colorful stacked bar charts and heatmaps that show the taxonomic composition of your samples.
+KrakenPlot takes the output from [Kraken2](https://ccb.jhu.edu/software/kraken2/) (a metagenomic sequence classifier) and transforms it into stacked bar charts and heatmaps that show the taxonomic composition of your samples.
 
-Whether you're analyzing wastewater, environmental samples, or other microbial communities, KrakenPlot makes it easy to visualize and compare the taxonomic profiles across multiple samples—no coding required!
+Whether you're analyzing wastewater, environmental samples, or other microbial communities, KrakenPlot makes it easy to visualize and compare the taxonomic profiles across multiple samples!
 
 ## Features
 
