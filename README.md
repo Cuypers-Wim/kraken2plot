@@ -1,4 +1,4 @@
-# KrakenPlot
+# Kraken2Plot
 
 **A command-line tool for creating visualizations of Kraken2 taxonomic classification output.**
 
@@ -6,9 +6,9 @@
 
 ## Overview
 
-KrakenPlot takes the output from [Kraken2](https://ccb.jhu.edu/software/kraken2/) (a metagenomic sequence classifier) and transforms it into stacked bar charts and heatmaps that show the taxonomic composition of your samples.
+Kraken2Plot takes the output from [Kraken2](https://ccb.jhu.edu/software/kraken2/) (a metagenomic sequence classifier) and transforms it into stacked bar charts and heatmaps that show the taxonomic composition of your samples.
 
-Whether you're analyzing wastewater, environmental samples, or other microbial communities, KrakenPlot makes it easy to visualize and compare the taxonomic profiles across multiple samples!
+Whether you're analyzing wastewater, environmental samples, or other microbial communities, Kraken2Plot makes it easy to visualize and compare the taxonomic profiles across multiple samples!
 
 ## Features
 
@@ -51,11 +51,11 @@ cd kraken2plot
 pip install -e .
 ```
 
-This installs KrakenPlot and makes the `kraken2plot` command available system-wide.
+This installs Kraken2Plot and makes the `kraken2plot` command available system-wide.
 
 ### 3. Download NCBI taxonomy files
 
-KrakenPlot needs the NCBI taxonomy database files to map taxon IDs to names:
+Kraken2Plot needs the NCBI taxonomy database files to map taxon IDs to names:
 
 ```bash
 # Create a directory to store taxonomy files
@@ -191,7 +191,7 @@ kraken2plot heatmap \
 
 ## Input File Format
 
-KrakenPlot expects standard Kraken2 output files (per-read output format):
+Kraken2Plot expects standard Kraken2 output files (per-read output format):
 
 ```
 C	read1	taxid	read_length	kmer_hits
@@ -208,7 +208,7 @@ Where:
 
 ## Sample Name Extraction
 
-KrakenPlot intelligently extracts sample names from file names:
+Kraken2Plot intelligently extracts sample names from file names:
 
 | Filename | Sample Name |
 |----------|------------|
@@ -219,7 +219,7 @@ KrakenPlot intelligently extracts sample names from file names:
 
 ## Output
 
-KrakenPlot generates PNG files with the following naming convention:
+Kraken2Plot generates PNG files with the following naming convention:
 
 `{prefix}_{rank}_{type}.png`
 
