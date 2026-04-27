@@ -17,7 +17,7 @@ Whether you're analyzing wastewater, environmental samples, or other microbial c
 - 📊 **Stacked bar charts** showing taxonomic composition across samples
 - 📈 **Multiple taxonomic ranks**: domain, phylum, family, genus, or species (or plot all at once!)
 - 🎨 **Customizable color palettes**: Including color-blind friendly options (viridis, plasma)
-- 🎯 **Flexible sample naming**: Automatically extracts barcode IDs or uses full sample names
+- 🎯 **Flexible sample naming**: Automatically extracts barcode IDs (often used in Nanopore sequencing workflows) or uses full sample names
 - 📂 **Organized output**: Save multiple plots to a directory with custom file prefix
 - 🔧 **Consistent styling**: Professional publication-quality plots with consistent formatting
 - 💾 **Count and percentage options**: View raw read counts or percentages
@@ -93,9 +93,9 @@ This creates a plot file `kraken2plot_phylum_pct.png` in your current directory.
 For a complete analysis of wastewater samples with all taxonomic ranks:
 
 ```bash
-data="/mnt/d/Docs/01_postdoc/01_projects/2026_wastewater/data_ap/kraken/aagash_kraken_raw"
-nodes="/home/darwim/database/ncbi_taxonomy/nodes.dmp"
-names="/home/darwim/database/ncbi_taxonomy/names.dmp"
+data="/path/to/kraken/output"
+nodes="~/databases/ncbi_taxonomy/nodes.dmp"
+names="~/databases/ncbi_taxonomy/names.dmp"
 
 kraken2plot phylum \
   --nodes "$nodes" \
@@ -317,7 +317,7 @@ kraken2plot phylum \
    ```bash
    mkdir results
    ```
-4. **Run KrakenPlot** with a descriptive prefix and title:
+4. **Run Kraken2Plot** with a descriptive prefix and title:
    ```bash
    kraken2plot phylum \
      --nodes ~/databases/ncbi_taxonomy/nodes.dmp \
@@ -337,10 +337,10 @@ kraken2plot phylum \
 
 ## Citation
 
-If you use KrakenPlot in your research, please cite:
+If you use Kraken2Plot in your research, please cite:
 
 ```
-KrakenPlot: Visualization tool for Kraken2 taxonomic output
+Kraken2Plot: Visualization tool for Kraken2 taxonomic output
 [Version 0.1.0]
 
 ```
@@ -355,7 +355,7 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## Authors
 
-- **KrakenPlot Contributors**
+- **Kraken2Plot Contributors**
 
 ## Support
 
