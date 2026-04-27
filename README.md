@@ -337,11 +337,9 @@ kraken2plot phylum \
 
 ## Citation
 
-If you use Kraken2Plot in your research, please cite:
-
 ```
-Kraken2Plot: Visualization tool for Kraken2 taxonomic output
-[Version 0.1.0]
+Wim L. Cuypers. Kraken2Plot: Visualization tool for Kraken2 taxonomic output. 
+Version 0.1.0. GitHub. 2026. Available at: https://github.com/Cuypers-Wim/kraken2plot
 
 ```
 
@@ -355,7 +353,7 @@ Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## Authors
 
-- **Kraken2Plot Contributors**
+- Dr. Wim L. Cuypers
 
 ## Support
 
