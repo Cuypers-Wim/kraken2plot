@@ -41,7 +41,7 @@ The following Python packages are installed automatically:
 ### 1. Clone or download this repository
 
 ```bash
-git clone https://github.com/yourusername/kraken2plot.git
+git clone https://github.com/Cuypers-Wim/kraken2plot.git
 cd kraken2plot
 ```
 
