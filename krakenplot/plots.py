@@ -28,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 _CMAP = "tab20"
 _ALPHA = 0.92
+UNRESOLVED_LABEL = "unresolved"
+UNCLASSIFIED_READ_LABEL = "Unclassified"
+LEGACY_UNCLASSIFIED_LABEL = "unclassified"
 
 
 def _top_n_and_other(
@@ -37,8 +40,9 @@ def _top_n_and_other(
 ) -> pd.Series:
     """Keep the *n* largest values; fold the rest into *other_label*."""
     top = series.nlargest(n).index
+    always_keep = {UNRESOLVED_LABEL, UNCLASSIFIED_READ_LABEL, LEGACY_UNCLASSIFIED_LABEL}
     return pd.Series(
-        series.index.map(lambda x: x if x in top else other_label),
+        series.index.map(lambda x: x if x in top or x in always_keep else other_label),
         index=series.index,
     )
 
@@ -56,7 +60,7 @@ def _stacked_bar(
     """Shared helper that draws a stacked bar chart from a wide-format pivot."""
     if pct:
         data = pivot.div(pivot.sum(axis=1), axis=0).mul(100)
-        ylabel = ylabel or "Percent of classified reads (%)"
+        ylabel = ylabel or "Percent of reads (%)"
     else:
         data = pivot
 
@@ -64,10 +68,13 @@ def _stacked_bar(
     cmap = plt.get_cmap(palette, max(n_cols, 1))
     colors = [cmap(i) for i in range(n_cols)]
 
-    # Ensure 'unclassified' is always gray if present
-    if 'unclassified' in data.columns:
-        idx = data.columns.get_loc('unclassified')
+    # Keep the two "not resolved to this rank" cases visually distinct.
+    if UNCLASSIFIED_READ_LABEL in data.columns:
+        idx = data.columns.get_loc(UNCLASSIFIED_READ_LABEL)
         colors[idx] = 'gray'
+    if UNRESOLVED_LABEL in data.columns:
+        idx = data.columns.get_loc(UNRESOLVED_LABEL)
+        colors[idx] = 'lightgray'
 
     fig, ax = plt.subplots(figsize=figsize)
     data.plot(
@@ -143,7 +150,7 @@ def plot_phylum_composition(
         title = f"{rank.capitalize()} composition across samples"
 
     counts = (
-        df.assign(**{rank: df[rank].fillna("unclassified")})
+        df.assign(**{rank: df[rank].fillna(UNRESOLVED_LABEL)})
         .groupby(["sample", rank])
         .size()
         .reset_index(name="count")
@@ -170,7 +177,7 @@ def plot_phylum_composition(
         pivot = pivot[pivot.sum().sort_values(ascending=False).index]
         legend_title = rank.capitalize()
 
-    ylabel = "Percent of classified reads (%)" if pct else "Read count"
+    ylabel = "Percent of reads (%)" if pct else "Read count"
     return _stacked_bar(
         pivot, ylabel=ylabel, title=title, figsize=figsize,
         legend_title=legend_title, pct=pct, palette=palette,
@@ -250,8 +257,8 @@ def plot_phylum_breakdown(
 
     subset["best_label"] = subset.apply(
         lambda row: (
-            row["species"] if row["species"] != "unclassified"
-            else (row["genus"] if row["genus"] != "unclassified" else row["family"])
+            row["species"] if row["species"] != UNRESOLVED_LABEL
+            else (row["genus"] if row["genus"] != UNRESOLVED_LABEL else row["family"])
         ),
         axis=1,
     )
@@ -367,6 +374,10 @@ def plot_species_heatmap(
         Number of top taxa (by total reads) to include.
     figsize:
         Matplotlib figure size.
+    include_unclassified:
+        Include Kraken2 ``U`` reads labelled ``"Unclassified"`` when they are
+        present. Classified reads with missing ranks remain labelled
+        ``"unresolved"``.
 
     Returns
     -------
@@ -375,9 +386,12 @@ def plot_species_heatmap(
     if rank not in df.columns:
         raise ValueError(f"Rank '{rank}' not found in DataFrame columns.")
 
+    if include_unclassified:
+        plot_df = df
+    else:
+        plot_df = df[~df[rank].isin([UNCLASSIFIED_READ_LABEL, LEGACY_UNCLASSIFIED_LABEL])]
     counts = (
-        df[df[rank] != "unclassified"]
-        .groupby(["sample", rank])
+        plot_df.groupby(["sample", rank])
         .size()
         .reset_index(name="count")
     )
@@ -409,8 +423,9 @@ def plot_read_counts(
     df: pd.DataFrame,
     *,
     figsize: tuple = (10, 5),
+    include_unclassified: bool = False,
 ) -> plt.Figure:
-    """Simple bar chart of total classified read counts per sample.
+    """Simple bar chart of total loaded read counts per sample.
 
     Parameters
     ----------
@@ -418,19 +433,19 @@ def plot_read_counts(
         DataFrame with a ``sample`` column.
     figsize:
         Matplotlib figure size.
-
     Returns
     -------
     matplotlib.figure.Figure
     """
     counts = df.groupby("sample").size().sort_index()
+    label = "Reads"
     fig, ax = plt.subplots(figsize=figsize)
     bars = ax.bar(counts.index, counts.values, color="#4C72B0", edgecolor="none",
                   alpha=0.85)
     ax.bar_label(bars, fmt="%d", padding=3, fontsize=9)
     ax.set_xlabel("Sample", fontsize=12)
-    ax.set_ylabel("Classified reads", fontsize=12)
-    ax.set_title("Classified read counts per sample", fontsize=13, fontweight="bold")
+    ax.set_ylabel(label, fontsize=12)
+    ax.set_title(f"{label} per sample", fontsize=13, fontweight="bold")
     ax.tick_params(axis="x", rotation=45)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)

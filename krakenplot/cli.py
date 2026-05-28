@@ -32,7 +32,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 from krakenplot import __version__
-from krakenplot.loader import add_lineage, load_kraken_files
+from krakenplot.loader import add_lineage, export_taxon_count_tables, load_kraken_files
 from krakenplot.plots import (
     plot_domain_composition,
     plot_phylum_breakdown,
@@ -40,7 +40,7 @@ from krakenplot.plots import (
     plot_read_counts,
     plot_species_heatmap,
 )
-from krakenplot.taxonomy import load_taxonomy
+from krakenplot.taxonomy import LINEAGE_RANKS, load_taxonomy
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -96,6 +96,14 @@ def _save_or_show(fig: plt.Figure, output: Optional[Path], prefix: str, suffix: 
     plt.close(fig)
 
 
+def _export_counts(df, output: Optional[Path], prefix: str, ranks):
+    """Write taxon count TSVs and report their paths."""
+    out_dir = Path(output) if output else Path(".")
+    paths = export_taxon_count_tables(df, out_dir, prefix, ranks)
+    for path in paths:
+        click.echo(f"Saved → {path}")
+
+
 # Common options shared by all sub-commands
 _common_options = [
     click.argument("inputs", nargs=-1, required=True, metavar="INPUT…"),
@@ -113,6 +121,8 @@ _common_options = [
                  help="Display interactive plot instead of saving"),
     click.option("--unclassified/--no-unclassified", default=False,
                  help="Include unclassified reads (default: exclude)"),
+    click.option("--export-tsv", is_flag=True,
+                 help="Export per-sample taxon count tables as TSV files"),
     click.option("--title", default=None,
                  help="Plot title (default: auto-generated)"),
     click.option("--palette", default="tab20", show_default=True,
@@ -161,7 +171,7 @@ def cli():
               help="Number of top taxa to show individually (not used for domain)")
 @click.option("--counts", "show_counts", is_flag=True,
               help="Also save a read-count version of the plot")
-def phylum(inputs, nodes, names, output, prefix, dpi, show, unclassified, title, palette, rank, top_n, show_counts):
+def phylum(inputs, nodes, names, output, prefix, dpi, show, unclassified, export_tsv, title, palette, rank, top_n, show_counts):
     """Stacked bar chart of taxonomic composition across samples."""
     paths = _resolve_inputs(inputs)
     par, rnk, nam = load_taxonomy(nodes, names)
@@ -171,6 +181,9 @@ def phylum(inputs, nodes, names, output, prefix, dpi, show, unclassified, title,
     out = Path(output) if output else None
 
     ranks = ["domain", "phylum", "family", "genus", "species"] if rank == "all" else [rank]
+
+    if export_tsv:
+        _export_counts(df, out, prefix, ranks)
 
     for r in ranks:
         plot_title = title or f"{r.capitalize()} composition across samples"
@@ -195,7 +208,7 @@ def phylum(inputs, nodes, names, output, prefix, dpi, show, unclassified, title,
               help="Taxonomic rank to plot, or 'all' for all ranks")
 @click.option("--counts", "show_counts", is_flag=True,
               help="Also save a read-count version of the plot")
-def domain(inputs, nodes, names, output, prefix, dpi, show, unclassified, title, palette, rank, show_counts):
+def domain(inputs, nodes, names, output, prefix, dpi, show, unclassified, export_tsv, title, palette, rank, show_counts):
     """Stacked bar chart of taxonomic composition across samples."""
     paths = _resolve_inputs(inputs)
     par, rnk, nam = load_taxonomy(nodes, names)
@@ -206,14 +219,17 @@ def domain(inputs, nodes, names, output, prefix, dpi, show, unclassified, title,
 
     ranks = ["domain", "phylum", "family", "genus", "species"] if rank == "all" else [rank]
 
+    if export_tsv:
+        _export_counts(df, out, prefix, ranks)
+
     for r in ranks:
         plot_title = title or f"{r.capitalize()} composition across samples"
-        fig = plot_domain_composition(df, rank=r, pct=True, title=plot_title, palette=palette)
+        fig = plot_phylum_composition(df, rank=r, pct=True, title=plot_title, palette=palette)
         suffix = f"{r}_pct"
         _save_or_show(fig, out, prefix, suffix, show, dpi)
 
         if show_counts:
-            fig2 = plot_domain_composition(df, rank=r, pct=False, title=plot_title, palette=palette)
+            fig2 = plot_phylum_composition(df, rank=r, pct=False, title=plot_title, palette=palette)
             suffix2 = f"{r}_counts"
             _save_or_show(fig2, out, prefix, suffix2, show, dpi)
 
@@ -231,7 +247,7 @@ def domain(inputs, nodes, names, output, prefix, dpi, show, unclassified, title,
               help="Phylum name(s) to break down (repeatable)")
 @click.option("--top-n", default=20, show_default=True,
               help="Max species/genus/family labels per phylum")
-def breakdown(inputs, nodes, names, output, prefix, dpi, show, unclassified, title, palette, phyla, top_n):
+def breakdown(inputs, nodes, names, output, prefix, dpi, show, unclassified, export_tsv, title, palette, phyla, top_n):
     """Per-phylum species/genus/family breakdown across samples."""
     paths = _resolve_inputs(inputs)
     par, rnk, nam = load_taxonomy(nodes, names)
@@ -239,6 +255,9 @@ def breakdown(inputs, nodes, names, output, prefix, dpi, show, unclassified, tit
     df = add_lineage(df, par, rnk, nam)
 
     out = Path(output) if output else None
+    if export_tsv:
+        _export_counts(df, out, prefix, LINEAGE_RANKS)
+
     fig = plot_phylum_breakdown(df, list(phyla), top_n=top_n)
     _save_or_show(fig, out, prefix, "phylum_breakdown", show, dpi)
 
@@ -254,7 +273,7 @@ def breakdown(inputs, nodes, names, output, prefix, dpi, show, unclassified, tit
               help="Taxonomic rank for the heatmap rows")
 @click.option("--top-n", default=30, show_default=True,
               help="Number of top taxa to display")
-def heatmap(inputs, nodes, names, output, prefix, dpi, show, unclassified, title, palette, rank, top_n):
+def heatmap(inputs, nodes, names, output, prefix, dpi, show, unclassified, export_tsv, title, palette, rank, top_n):
     """Relative-abundance heatmap at a chosen taxonomic rank."""
     paths = _resolve_inputs(inputs)
     par, rnk, nam = load_taxonomy(nodes, names)
@@ -262,7 +281,10 @@ def heatmap(inputs, nodes, names, output, prefix, dpi, show, unclassified, title
     df = add_lineage(df, par, rnk, nam)
 
     out = Path(output) if output else None
-    fig = plot_species_heatmap(df, rank=rank, top_n=top_n)
+    if export_tsv:
+        _export_counts(df, out, prefix, [rank])
+
+    fig = plot_species_heatmap(df, rank=rank, top_n=top_n, include_unclassified=unclassified)
     _save_or_show(fig, out, prefix, f"heatmap_{rank}", show, dpi)
 
 
@@ -272,7 +294,7 @@ def heatmap(inputs, nodes, names, output, prefix, dpi, show, unclassified, title
 
 @cli.command()
 @add_common_options
-def readcounts(inputs, nodes, names, output, prefix, dpi, show, unclassified, title, palette):
+def readcounts(inputs, nodes, names, output, prefix, dpi, show, unclassified, export_tsv, title, palette):
     """Bar chart of total classified read counts per sample."""
     paths = _resolve_inputs(inputs)
     par, rnk, nam = load_taxonomy(nodes, names)
@@ -280,6 +302,9 @@ def readcounts(inputs, nodes, names, output, prefix, dpi, show, unclassified, ti
     df = add_lineage(df, par, rnk, nam)
 
     out = Path(output) if output else None
+    if export_tsv:
+        _export_counts(df, out, prefix, LINEAGE_RANKS)
+
     fig = plot_read_counts(df)
     _save_or_show(fig, out, prefix, "readcounts", show, dpi)
 
@@ -300,7 +325,7 @@ def readcounts(inputs, nodes, names, output, prefix, dpi, show, unclassified, ti
 @click.option("--top-n-heatmap", default=30, show_default=True)
 @click.option("--heatmap-rank", default="species", show_default=True,
               type=click.Choice(["domain", "phylum", "family", "genus", "species"]))
-def all_plots(inputs, nodes, names, output, prefix, dpi, show, unclassified, title, palette,
+def all_plots(inputs, nodes, names, output, prefix, dpi, show, unclassified, export_tsv, title, palette,
               phyla, top_n_phylum, top_n_breakdown, top_n_heatmap, heatmap_rank):
     """Generate all available plots in one go."""
     paths = _resolve_inputs(inputs)
@@ -309,13 +334,15 @@ def all_plots(inputs, nodes, names, output, prefix, dpi, show, unclassified, tit
     df = add_lineage(df, par, rnk, nam)
 
     out = Path(output) if output else None
+    if export_tsv:
+        _export_counts(df, out, prefix, LINEAGE_RANKS)
 
-    _save_or_show(plot_read_counts(df),              out, prefix, "readcounts",       show, dpi)
+    _save_or_show(plot_read_counts(df), out, prefix, "readcounts", show, dpi)
     _save_or_show(plot_domain_composition(df),        out, prefix, "domain_pct",       show, dpi)
     _save_or_show(plot_phylum_composition(df, top_n=top_n_phylum), out, prefix, "phylum_pct", show, dpi)
     _save_or_show(plot_phylum_composition(df, top_n=top_n_phylum, pct=False), out, prefix, "phylum_counts", show, dpi)
     _save_or_show(plot_phylum_breakdown(df, list(phyla), top_n=top_n_breakdown), out, prefix, "phylum_breakdown", show, dpi)
-    _save_or_show(plot_species_heatmap(df, rank=heatmap_rank, top_n=top_n_heatmap), out, prefix, f"heatmap_{heatmap_rank}", show, dpi)
+    _save_or_show(plot_species_heatmap(df, rank=heatmap_rank, top_n=top_n_heatmap, include_unclassified=unclassified), out, prefix, f"heatmap_{heatmap_rank}", show, dpi)
 
     click.echo("✓ All plots saved.")
 

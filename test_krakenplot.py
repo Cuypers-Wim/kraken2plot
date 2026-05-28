@@ -14,7 +14,12 @@ import pandas as pd
 import pytest
 
 from krakenplot.taxonomy import get_lineage, load_taxonomy
-from krakenplot.loader import add_lineage, load_kraken_files
+from krakenplot.loader import (
+    add_lineage,
+    export_taxon_count_tables,
+    load_kraken_files,
+    taxon_count_table,
+)
 from krakenplot.plots import (
     plot_domain_composition,
     plot_phylum_breakdown,
@@ -183,6 +188,56 @@ class TestAddLineage:
         row = df_with_lineage[df_with_lineage["taxid"] == 10000].iloc[0]
         assert row["species"] == "Somespecies"
         assert row["domain"] == "Bacteria"
+
+    def test_missing_rank_on_classified_read_is_unresolved(self, df_with_lineage):
+        row = df_with_lineage[df_with_lineage["taxid"] == 300].iloc[0]
+        assert row["domain"] == "Archaea"
+        assert row["family"] == "unresolved"
+
+    def test_kraken_unclassified_read_is_unclassified(self, kraken_file, taxonomy):
+        par, rnk, nam = taxonomy
+        df = load_kraken_files([kraken_file], classified_only=False)
+        df = add_lineage(df, par, rnk, nam)
+
+        row = df[df["status"] == "U"].iloc[0]
+        assert row["domain"] == "Unclassified"
+        assert row["species"] == "Unclassified"
+
+
+class TestTaxonCountTables:
+    def test_counts_per_sample_and_taxon(self, df_with_lineage):
+        counts = taxon_count_table(df_with_lineage, "species")
+
+        row = counts[
+            (counts["sample"] == "barcode01")
+            & (counts["species"] == "Somespecies")
+        ].iloc[0]
+        assert row["count"] == 2
+
+    def test_unclassified_rows_are_exported_when_loaded(self, kraken_file, taxonomy):
+        par, rnk, nam = taxonomy
+        df = load_kraken_files([kraken_file], classified_only=False)
+        df = add_lineage(df, par, rnk, nam)
+
+        counts = taxon_count_table(df, "domain")
+
+        row = counts[
+            (counts["sample"] == "barcode01")
+            & (counts["domain"] == "Unclassified")
+        ].iloc[0]
+        assert row["count"] == 1
+
+    def test_export_writes_prefixed_tsvs(self, df_with_lineage, tmp_path):
+        paths = export_taxon_count_tables(
+            df_with_lineage, tmp_path, "sample_prefix", ["domain", "species"]
+        )
+
+        assert paths == [
+            tmp_path / "sample_prefix_domain_counts.tsv",
+            tmp_path / "sample_prefix_species_counts.tsv",
+        ]
+        exported = pd.read_csv(paths[1], sep="\t")
+        assert list(exported.columns) == ["sample", "species", "count"]
 
 
 # ---------------------------------------------------------------------------

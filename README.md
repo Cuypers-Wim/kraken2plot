@@ -1,4 +1,5 @@
 # Kraken2Plot
+# Kraken2Plot
 
 **A command-line tool for creating visualizations of Kraken2 taxonomic classification output.**
 
@@ -6,9 +7,9 @@
 
 ## Overview
 
-Kraken2Plot takes the output from [Kraken2](https://ccb.jhu.edu/software/kraken2/) (a metagenomic sequence classifier) and transforms it into stacked bar charts and heatmaps that show the taxonomic composition of your samples.
+Kraken2Plot takes the output from [Kraken2](https://ccb.jhu.edu/software/kraken2/) (a metagenomic sequence classifier) and transforms it into intuitive, colorful stacked bar charts and heatmaps that show the taxonomic composition of your samples.
 
-Whether you're analyzing wastewater, environmental samples, or other microbial communities, Kraken2Plot makes it easy to visualize and compare the taxonomic profiles across multiple samples!
+Whether you're analyzing wastewater, environmental samples, or other microbial communities, Kraken2Plot makes it easy to visualize and compare the taxonomic profiles across multiple samples—no coding required!
 
 ## Features
 
@@ -52,9 +53,11 @@ pip install -e .
 ```
 
 This installs Kraken2Plot and makes the `kraken2plot` command available system-wide.
+This installs Kraken2Plot and makes the `kraken2plot` command available system-wide.
 
 ### 3. Download NCBI taxonomy files
 
+Kraken2Plot needs the NCBI taxonomy database files to map taxon IDs to names:
 Kraken2Plot needs the NCBI taxonomy database files to map taxon IDs to names:
 
 ```bash
@@ -138,6 +141,8 @@ The primary command for generating taxonomic composition plots.
 - `--output OUTPUT_DIR` (or `-o`): Directory where to save plot files (default: current directory)
 - `--prefix PREFIX`: File name prefix for output (default: `kraken2plot`)
   - Files will be saved as `{prefix}_{rank}_{type}.png`
+- `--export-tsv`: Also write per-sample taxon count tables as TSV files
+  - Files are saved as `{prefix}_{rank}_counts.tsv`
 
 #### Plot Customization
 
@@ -153,7 +158,9 @@ The primary command for generating taxonomic composition plots.
 #### Data Options
 
 - `--unclassified`: Include unclassified reads in the plot (default: off, excludes them)
-  - Unclassified reads appear in gray
+  - Unclassified Kraken rows (`status == "U"`, usually `taxid == 0`) are otherwise filtered out before taxonomy lookup
+  - When included, they are assigned `"Unclassified"` at every lineage rank and appear in gray in stacked bar plots
+  - Missing lineage ranks for classified reads are filled as `"unresolved"` at that specific rank
 - `--dpi DPI`: Resolution of output images in dots per inch (default: 150)
   - Use higher values (300+) for publication-quality figures
 
@@ -192,6 +199,7 @@ kraken2plot heatmap \
 ## Input File Format
 
 Kraken2Plot expects standard Kraken2 output files (per-read output format):
+Kraken2Plot expects standard Kraken2 output files (per-read output format):
 
 ```
 C	read1	taxid	read_length	kmer_hits
@@ -208,7 +216,7 @@ Where:
 
 ## Sample Name Extraction
 
-Kraken2Plot intelligently extracts sample names from file names:
+Kraken2Plot extracts sample names from file names:
 
 | Filename | Sample Name |
 |----------|------------|
@@ -219,6 +227,7 @@ Kraken2Plot intelligently extracts sample names from file names:
 
 ## Output
 
+Kraken2Plot generates PNG files with the following naming convention:
 Kraken2Plot generates PNG files with the following naming convention:
 
 `{prefix}_{rank}_{type}.png`
@@ -231,10 +240,30 @@ Where:
 Example outputs:
 - `composition_phylum_pct.png` — Percentage-based phylum plot
 - `composition_phylum_counts.png` — Count-based phylum plot (if `--counts` used)
+- `composition_phylum_counts.tsv` - Per-sample phylum read counts (if `--export-tsv` used)
+
+### TSV Count Tables
+
+Use `--export-tsv` to save the count DataFrames used for downstream analysis. Each TSV has three columns:
+
+```
+sample  <rank>  count
+```
+
+For example, `--prefix wastewater_march2026 --rank all --export-tsv` writes:
+
+- `wastewater_march2026_domain_counts.tsv`
+- `wastewater_march2026_phylum_counts.tsv`
+- `wastewater_march2026_family_counts.tsv`
+- `wastewater_march2026_genus_counts.tsv`
+- `wastewater_march2026_species_counts.tsv`
+
+These tables follow the same unclassified-read policy as the plots: Kraken2 unclassified reads are present only when `--unclassified` is used. Classified reads with missing lineage ranks can still appear as `unresolved`.
 
 ## Color Handling
 
-- **Unclassified reads**: Always shown in gray when included with `--unclassified`
+- **Unclassified reads**: Kraken2 `U` rows are shown as `Unclassified` in gray when included with `--unclassified`
+- **Unresolved ranks**: Classified reads missing the plotted taxonomic rank are shown as `unresolved` in light gray
 - **"Other" category**: When taxa exceed `--top-n`, they're grouped into "Other" for clarity
 - **Custom palettes**: Choose from matplotlib's colormaps; `viridis` and `plasma` are recommended for accessibility
 
@@ -365,3 +394,4 @@ For questions or issues:
 ---
 
 **Happy plotting! 🧬📊**
+

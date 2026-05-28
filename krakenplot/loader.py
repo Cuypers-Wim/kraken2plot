@@ -19,9 +19,11 @@ from typing import Dict, List, Optional
 
 import pandas as pd
 
-from krakenplot.taxonomy import get_lineage
+from krakenplot.taxonomy import LINEAGE_RANKS, get_lineage
 
 logger = logging.getLogger(__name__)
+UNRESOLVED_LABEL = "unresolved"
+UNCLASSIFIED_READ_LABEL = "Unclassified"
 
 # Regex to pull a "sample name" from a filename.
 # Tries to grab everything up to the first underscore; falls back to the stem.
@@ -131,5 +133,57 @@ def add_lineage(
 
     lineage_df = pd.DataFrame(list(df["taxid"].map(_lookup)))
     lineage_df.index = df.index
+    lineage_cols = list(LINEAGE_RANKS)
+
+    # Split Kraken2 unclassified reads from classified reads with unresolved ranks.
+    # get_lineage uses "unclassified" as its generic fallback; this is the
+    # point where we still know each read's Kraken2 status.
+    classified_mask = df["status"] == "C"
+    unclassified_mask = df["status"] == "U"
+    lineage_df.loc[classified_mask, lineage_cols] = lineage_df.loc[
+        classified_mask, lineage_cols
+    ].replace("unclassified", UNRESOLVED_LABEL)
+    lineage_df.loc[unclassified_mask, lineage_cols] = UNCLASSIFIED_READ_LABEL
+
     df = pd.concat([df, lineage_df], axis=1)
     return df
+
+
+def taxon_count_table(df: pd.DataFrame, rank: str) -> pd.DataFrame:
+    """Return read counts per sample and taxon for one lineage rank.
+
+    Kraken2 unclassified read rows are included whenever they are present in
+    *df*. In the normal CLI flow this means they appear only when the user
+    passes ``--unclassified`` while loading Kraken2 output. Classified reads
+    with missing lineage ranks are counted under ``"unresolved"``.
+    """
+    if rank not in LINEAGE_RANKS:
+        raise ValueError(f"Rank must be one of: {', '.join(LINEAGE_RANKS)}")
+    if rank not in df.columns:
+        raise ValueError(f"Rank '{rank}' not found in DataFrame columns.")
+
+    counts = (
+        df.assign(**{rank: df[rank].fillna(UNRESOLVED_LABEL)})
+        .groupby(["sample", rank])
+        .size()
+        .reset_index(name="count")
+        .sort_values(["sample", "count", rank], ascending=[True, False, True])
+        .reset_index(drop=True)
+    )
+    return counts
+
+
+def export_taxon_count_tables(
+    df: pd.DataFrame,
+    output: Path,
+    prefix: str,
+    ranks=LINEAGE_RANKS,
+) -> List[Path]:
+    """Write one TSV count table per requested lineage rank."""
+    output.mkdir(parents=True, exist_ok=True)
+    written: List[Path] = []
+    for rank in ranks:
+        out_path = output / f"{prefix}_{rank}_counts.tsv"
+        taxon_count_table(df, rank).to_csv(out_path, sep="\t", index=False)
+        written.append(out_path)
+    return written
